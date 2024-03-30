@@ -26,8 +26,8 @@ program
     "扫描的文件夹路径，如：/user/projects，默认是当前目录",
     process.cwd()
   )
-  .option("-s, --since <date>", "开始时间(YYYY-MM-DD)，默认是当天")
-  .option("-u, --until <date>", "结束时间(YYYY-MM-DD)，默认是当天")
+  .option("-s, --since <date>", "开始时间(YYYY-MM-DD)，默认是当天", moment().subtract(1,'days').format("YYYY-MM-DD"))
+  .option("-u, --until <date>", "结束时间(YYYY-MM-DD)，默认是当天", moment().format("YYYY-MM-DD"))
   .option("-d, --deep <number>", "扫描文件夹深度，默认扫描3层", 3)
   .option(
     "-a, --author <string>",
@@ -38,7 +38,7 @@ program
     "忽略统计的文件，会忽略文件名中包含指定字符串的文件，多个字符串用逗号分隔，如yarn.lock,package-lock.json，默认不统计package-lock.json,yarn.lock",
     "package-lock.json,yarn.lock"
   )
-  .version("1.0.0", "-v, --version", "版本号")
+  .version("1.0.1", "-v, --version", "版本号")
   .helpOption("-h, --help", "帮助文档");
 program.addHelpText(
   "after",
@@ -97,7 +97,7 @@ const handleEntries = async (entries, totalObj) => {
       baseDir: projectPath,
       binary: "git",
     }).log(gitShellOptions);
-    console.log(chalk.bold.green(`共${log.all.length}次提交：`));
+    console.log(chalk.bold.green(`共${log.all.length}次提交`));
     if (log.all.length > 0) {
       log.all.forEach((logItem, index) => {
         if (!logItem) return;
