@@ -38,7 +38,7 @@ program
     "忽略统计的文件，会忽略文件名中包含指定字符串的文件，多个字符串用逗号分隔，如yarn.lock,package-lock.json，默认不统计package-lock.json,yarn.lock",
     "package-lock.json,yarn.lock"
   )
-  .version("1.0.2", "-v, --version", "版本号")
+  .version("1.0.3", "-v, --version", "版本号")
   .helpOption("-h, --help", "帮助文档");
 program.addHelpText(
   "after",
