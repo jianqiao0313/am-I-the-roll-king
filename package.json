@@ -1,11 +1,15 @@
 {
   "name": "am-i-the-roll-king",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jianqiao0313/am-I-the-roll-king.git"
   },
   "bin": {
     "aitrk": "index.js"
