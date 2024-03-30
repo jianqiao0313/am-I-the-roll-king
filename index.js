@@ -16,13 +16,11 @@ program
   )
   .option(
     "-s, --since <date>",
-    "开始时间(YYYY-MM-DD)，默认是当天",
-    moment().format("YYYY-MM-DD")
+    "开始时间(YYYY-MM-DD)，默认是当天"
   )
   .option(
     "-u, --until <date>",
-    "结束时间(YYYY-MM-DD)，默认是当天",
-    moment().format("YYYY-MM-DD")
+    "结束时间(YYYY-MM-DD)，默认是当天"
   )
   .option("-d, --deep <number>", "扫描文件夹深度，默认扫描3层", 3)
   .option(
@@ -75,23 +73,28 @@ const handleOptions = (author) => {
   } else {
     gitShellOptions["--author"] = `(${author})`;
   }
-  gitShellOptions["--since"] = options.since;
-  gitShellOptions["--until"] = options.until;
+  if(options.since){
+    gitShellOptions["--since"] = options.since;
+  }
+  if(options.until){
+    gitShellOptions["--until"] = options.until;
+  }
 };
 const handleEntries = async (entries, totalObj) => {
   if (entries.length === 0) {
     console.log("统计结果：", totalObj);
     return;
   }
-  const projectPath = path.resolve(entries.shift(), "../");
-  console.log(`[开始处理]${projectPath}:`);
+  const projectPath = path.resolve(entries.shift(), '../');
+  console.log(`[开始处理]${projectPath}项目`);
   try {
     const log = await simpleGit({
       baseDir: projectPath,
       binary: "git",
     }).log(gitShellOptions);
+    console.log(` 共${log.all.length}次提交：`)
     if (log.all.length > 0) {
-      log.all.forEach((logItem) => {
+      log.all.forEach((logItem, index) => {
         if (!logItem) return;
         const { diff } = logItem;
         if (!diff) return;
@@ -100,7 +103,7 @@ const handleEntries = async (entries, totalObj) => {
         let changes = 0;
         let deletions = 0;
         let insertions = 0;
-        console.log(` |-开始处理${logItem.hash}-${logItem.message}`);
+        console.log(` |-第${index+1}次提交，hash：${logItem.hash}，message：${logItem.message}`);
         files.forEach((fileItem) => {
           let ignore = ignoreFile.some((ignoreFileItem) =>
             fileItem.file.includes(ignoreFileItem)
@@ -114,7 +117,7 @@ const handleEntries = async (entries, totalObj) => {
           insertions += fileItem.insertions ? fileItem.insertions : 0;
         });
         console.log(
-          ` |-处理结束：${changes} changes, ${deletions} deletions, ${insertions} insertions`
+          ` |-第${index+1}次提交处理结束：${changes} changes, ${deletions} deletions, ${insertions} insertions`
         );
         totalObj.insertions += insertions;
         totalObj.deletions += deletions;
