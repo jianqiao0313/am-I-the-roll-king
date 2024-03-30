@@ -19,7 +19,7 @@ console.log(
   )
 );
 program
-  .name("am-I-the-roll-king")
+  .name("aitrk")
   .description("我是卷王吗？")
   .option(
     "-p, --path <string>",
@@ -38,19 +38,19 @@ program
     "忽略统计的文件，会忽略文件名中包含指定字符串的文件，多个字符串用逗号分隔，如yarn.lock,package-lock.json，默认不统计package-lock.json,yarn.lock",
     "package-lock.json,yarn.lock"
   )
-  .version("1.0.4", "-v, --version", "版本号")
+  .version("1.0.5", "-v, --version", "版本号")
   .helpOption("-h, --help", "帮助文档");
 program.addHelpText(
   "after",
   `
 示例:
-    $ am-I-the-roll-king //统计当前用户，当前文件夹下，当天的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
-    $ am-I-the-roll-king -s 2024-01-01 -u 2024-12-29 //统计当前用户，当前文件夹下，2024年1月1日到2024年12月29日的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
-    $ am-I-the-roll-king -p "/user/project" //统计当前用户，/user/project文件夹下，2024年1月1日到2024年12月29日的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
-    $ am-I-the-roll-king -d 5 //统计当前用户，当前文件夹下，当天的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是5
-    $ am-I-the-roll-king -a "zhangsan,lisi" //统计zhangsan,lisi用户，当前文件夹下，当天的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
-    $ am-I-the-roll-king -i "yarn.lock,package-lock.json,aaa.js" //统计当前用户，当前文件夹下，当天的代码提交情况，忽略yarn.lock,package-lock.json,aaa.js文件，扫描文件夹深度是3
-    $ am-I-the-roll-king -s 2024-01-01 -u 2024-12-29 -p "/user/project" -d 5 -a "zhangsan,lisi" -i "yarn.lock,package-lock.json,aaa.js" //统计zhangsan,lisi用户，/user/project文件夹下，2024年1月1日到2024年12月29日的代码提交情况，忽略yarn.lock,package-lock.json,aaa.js文件，扫描文件夹深度是5
+    $ aitrk //统计当前用户，当前文件夹下，当天的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
+    $ aitrk -s 2024-01-01 -u 2024-12-29 //统计当前用户，当前文件夹下，2024年1月1日到2024年12月29日的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
+    $ aitrk -p "/user/project" //统计当前用户，/user/project文件夹下，2024年1月1日到2024年12月29日的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
+    $ aitrk -d 5 //统计当前用户，当前文件夹下，当天的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是5
+    $ aitrk -a "zhangsan,lisi" //统计zhangsan,lisi用户，当前文件夹下，当天的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
+    $ aitrk -i "yarn.lock,package-lock.json,aaa.js" //统计当前用户，当前文件夹下，当天的代码提交情况，忽略yarn.lock,package-lock.json,aaa.js文件，扫描文件夹深度是3
+    $ aitrk -s 2024-01-01 -u 2024-12-29 -p "/user/project" -d 5 -a "zhangsan,lisi" -i "yarn.lock,package-lock.json,aaa.js" //统计zhangsan,lisi用户，/user/project文件夹下，2024年1月1日到2024年12月29日的代码提交情况，忽略yarn.lock,package-lock.json,aaa.js文件，扫描文件夹深度是5
 `
 );
 program.parse();
