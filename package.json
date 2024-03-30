@@ -1,0 +1,16 @@
+{
+  "name": "am-i-the-roll-king",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fast-glob": "^3.3.2",
+    "simple-git": "^3.24.0"
+  }
+}
