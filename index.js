@@ -9,6 +9,7 @@ const moment = require("moment");
 const clear = require("clear");
 const chalk = require("chalk");
 const figlet = require("figlet");
+const packageJson = require("./package.json");
 clear();
 console.log(
   chalk.yellow(
@@ -38,7 +39,7 @@ program
     "忽略统计的文件，会忽略文件名中包含指定字符串的文件，多个字符串用逗号分隔，如yarn.lock,package-lock.json，默认不统计package-lock.json,yarn.lock",
     "package-lock.json,yarn.lock"
   )
-  .version("1.0.5", "-v, --version", "版本号")
+  .version(packageJson.version, "-v, --version", "版本号")
   .helpOption("-h, --help", "帮助文档");
 program.addHelpText(
   "after",
@@ -161,7 +162,7 @@ const printResult = (totalObj) => {
   let perDayChange = totalObj.changes / countDays;
   console.log(
     chalk.black.bgYellow.bold(
-      `共${countDays}天，平均insertions: ${
+      `${options.since}-${options.until}，共${countDays}天，平均insertions: ${
       (totalObj.insertions / countDays).toFixed(2)
       }, 平均deletions: ${(totalObj.deletions / countDays).toFixed(2)}, 平均changes: ${
         (totalObj.changes / countDays).toFixed(2)
@@ -174,10 +175,6 @@ const printResult = (totalObj) => {
   }
   if (perDayChange > 500) {
     console.log(chalk.yellow.bold(`你离卷王越来越近了！`));
-    return;
-  }
-  if (perDayChange > 100) {
-    console.log(chalk.green.bold(`还可以~`));
     return;
   }
   if (perDayChange < 100) {
