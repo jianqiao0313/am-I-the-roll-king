@@ -30,12 +30,12 @@ program
   .option(
     "-s, --since <date>",
     "开始时间(YYYY-MM-DD)，默认是当天",
-    moment().subtract(1, "days").format("YYYY-MM-DD")
+    moment().hours(0).minute(0).second(0).format("YYYY-MM-DD HH:mm:ss")
   )
   .option(
     "-u, --until <date>",
     "结束时间(YYYY-MM-DD)，默认是当天",
-    moment().format("YYYY-MM-DD")
+    moment().hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss")
   )
   .option("-d, --deep <number>", "扫描文件夹深度，默认扫描3层", 3)
   .option(
@@ -177,16 +177,16 @@ const printResult = (totalObj) => {
     )
   );
   let begin = moment(
-    options.since ? options.since : moment().format("YYYY-MM-DD")
+    options.since ? moment(options.since).hours(0).minute(0).second(0).format("YYYY-MM-DD HH:mm:ss") : moment().hours(0).minute(0).second(0).format("YYYY-MM-DD HH:mm:ss")
   );
   let end = moment(
-    options.until ? options.until : moment().format("YYYY-MM-DD")
+    options.until ? moment(options.until).hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss") : moment().hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss")
   );
   let countDays = end.diff(begin, "days") ? end.diff(begin, "days") : 1;
   let perDayChange = totalObj.changes / countDays;
   console.log(
     chalk.black.bgYellow.bold(
-      `${options.since}-${options.until}，共${countDays}天，平均insertions: ${(
+      `${begin.format("YYYY-MM-DD HH:mm:ss")}-${end.format("YYYY-MM-DD HH:mm:ss")}，共${countDays}天，平均insertions: ${(
         totalObj.insertions / countDays
       ).toFixed(2)}, 平均deletions: ${(totalObj.deletions / countDays).toFixed(
         2
