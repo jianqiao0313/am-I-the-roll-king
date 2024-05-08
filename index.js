@@ -182,11 +182,11 @@ const printResult = (totalObj) => {
   let end = moment(
     options.until ? moment(options.until).hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss") : moment().hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss")
   );
-  let countDays = end.diff(begin, "days") ? end.diff(begin, "days") : 1;
+  let countDays =  Math.ceil(end.diff(begin, "days", true));
   let perDayChange = totalObj.changes / countDays;
   console.log(
     chalk.black.bgYellow.bold(
-      `${begin.format("YYYY-MM-DD HH:mm:ss")}-${end.format("YYYY-MM-DD HH:mm:ss")}，共${countDays}天，平均insertions: ${(
+      `${begin.format("YYYY-MM-DD HH:mm:ss")} - ${end.format("YYYY-MM-DD HH:mm:ss")}，共${countDays}天，平均insertions: ${(
         totalObj.insertions / countDays
       ).toFixed(2)}, 平均deletions: ${(totalObj.deletions / countDays).toFixed(
         2
