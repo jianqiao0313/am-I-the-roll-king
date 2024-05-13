@@ -93,10 +93,10 @@ const handleOptions = (author) => {
     gitShellOptions["--author"] = `(${author})`;
   }
   if (options.since) {
-    gitShellOptions["--since"] = options.since;
+    gitShellOptions["--since"] = moment(options.since).hours(0).minute(0).second(0).format("YYYY-MM-DD HH:mm:ss");
   }
   if (options.until) {
-    gitShellOptions["--until"] = options.until;
+    gitShellOptions["--until"] = moment(options.until).hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss");
   }
 };
 const handleEntries = async (entries, totalObj) => {
@@ -137,7 +137,7 @@ const handleEntries = async (entries, totalObj) => {
           chalk.green(
             ` |-第${index + 1}次提交，hash：${logItem.hash}，message：${
               logItem.message
-            }`
+            }，提交时间：${moment(logItem.date).format("YYYY-MM-DD HH:mm:ss")}`
           )
         );
         files.forEach((fileItem) => {
