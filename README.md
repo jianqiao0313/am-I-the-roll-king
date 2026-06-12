@@ -37,6 +37,7 @@ Options:
   -a, --author <string>      作者，会取git config中的user.name，如果想匹配多个作者，可以用逗号分隔，如"zhangesan,lisi"
   -i, --ignoreFile <string>  忽略统计的文件，会忽略文件名中包含指定字符串的文件，多个字符串用逗号分隔，如"yarn.lock,package-lock.json"，默认不统计package-lock.json,yarn.lock
   -ip,--ignoreProject <string>  忽略统计的项目名称，多个字符串用逗号分隔，如"project1,project2"，默认不忽略任何项目
+  -b, --branch <string>      统计前先切换到指定分支，优先切换到远端分支（如origin/aaa），切换前如果本地有未提交的变动会自动stash
   -v, --version              版本号
   -h, --help                 帮助文档
 
@@ -48,6 +49,7 @@ Options:
     $ aitrk -a "zhangsan,lisi" //统计zhangsan,lisi用户，当前文件夹下，当天的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
     $ aitrk -i "yarn.lock,package-lock.json,aaa.js" //统计当前用户，当前文件夹下，当天的代码提交情况，忽略yarn.lock,package-lock.json,aaa.js文件，扫描文件夹深度是3
     $ aitrk -ip "project1,project2" //统计当前用户，当前文件夹下，当天的代码提交情况，忽略project1,project2项目，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
+    $ aitrk -b aaa //统计前每个仓库先切换到aaa分支（优先远端origin/aaa），本地有未提交变动会自动stash
     $ aitrk -s 2024-01-01 -u 2024-12-29 -p "/user/project" -d 5 -a "zhangsan,lisi" -i "yarn.lock,package-lock.json,aaa.js" //统计zhangsan,lisi用户，/user/project文件夹下，2024年1月1日到2024年12月29日的代码提交情况，忽略yarn.lock,package-lock.json,aaa.js文件，扫描文件夹深度是5
 
 ```

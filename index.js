@@ -2,10 +2,9 @@
 const path = require("path");
 const simpleGit = require("simple-git");
 const fg = require("fast-glob");
-const ignoreFile = ["package-lock.json", "yarn.lock"];
 const { Command } = require("commander");
 const program = new Command();
-const moment = require("moment");
+const dayjs = require("dayjs");
 const clear = require("clear");
 const chalk = require("chalk");
 const figlet = require("figlet");
@@ -30,12 +29,12 @@ program
   .option(
     "-s, --since <date>",
     "开始时间(YYYY-MM-DD)，默认是当天",
-    moment().hours(0).minute(0).second(0).format("YYYY-MM-DD HH:mm:ss")
+    dayjs().hour(0).minute(0).second(0).format("YYYY-MM-DD HH:mm:ss")
   )
   .option(
     "-u, --until <date>",
     "结束时间(YYYY-MM-DD)，默认是当天",
-    moment().hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss")
+    dayjs().hour(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss")
   )
   .option("-d, --deep <number>", "扫描文件夹深度，默认扫描3层", 3)
   .option(
@@ -51,6 +50,10 @@ program
     "-ip,--ignoreProject <string>",
     '忽略统计的项目名称，多个字符串用逗号分隔，如"project1,project2"，默认不忽略任何项目'
   )
+  .option(
+    "-b, --branch <string>",
+    '统计前先切换到指定分支，优先切换到远端分支（如origin/aaa），切换前如果本地有未提交的变动会自动stash'
+  )
   .version(packageJson.version, "-v, --version", "版本号")
   .helpOption("-h, --help", "帮助文档");
 program.addHelpText(
@@ -64,15 +67,28 @@ program.addHelpText(
     $ aitrk -a "zhangsan,lisi" //统计zhangsan,lisi用户，当前文件夹下，当天的代码提交情况，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
     $ aitrk -i "yarn.lock,package-lock.json,aaa.js" //统计当前用户，当前文件夹下，当天的代码提交情况，忽略yarn.lock,package-lock.json,aaa.js文件，扫描文件夹深度是3
     $ aitrk -ip "project1,project2" //统计当前用户，当前文件夹下，当天的代码提交情况，忽略project1,project2项目，忽略package-lock.json,yarn.lock文件，扫描文件夹深度是3
+    $ aitrk -b aaa //统计前每个仓库先切换到aaa分支（优先远端origin/aaa），本地有未提交变动会自动stash
     $ aitrk -s 2024-01-01 -u 2024-12-29 -p "/user/project" -d 5 -a "zhangsan,lisi" -i "yarn.lock,package-lock.json,aaa.js" //统计zhangsan,lisi用户，/user/project文件夹下，2024年1月1日到2024年12月29日的代码提交情况，忽略yarn.lock,package-lock.json,aaa.js文件，扫描文件夹深度是5
 `
 );
 program.parse();
 const options = program.opts();
+const validateDateOption = (name, value) => {
+  if (value && !dayjs(value).isValid()) {
+    console.log(chalk.red.bold(`无效的${name}：${value}，请使用YYYY-MM-DD格式`));
+    process.exit(1);
+  }
+};
+validateDateOption("开始时间(-s, --since)", options.since);
+validateDateOption("结束时间(-u, --until)", options.until);
+const ignoreFiles = (options.ignoreFile || "")
+  .split(",")
+  .map((item) => item.trim())
+  .filter(Boolean);
+const escapeRegExp = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const gitShellOptions = {
   "--numstat": null,
-  "--perl-regexp": null,
-  "--invert-grep": null,
+  "--extended-regexp": null,
 };
 
 const getEntries = () => {
@@ -80,50 +96,140 @@ const getEntries = () => {
     dot: true,
     onlyDirectories: true,
     absolute: true,
-    deep: 3,
+    deep: Number(options.deep) || 3,
+    ignore: ["**/node_modules/**"],
   });
 };
 const getAuthor = async () => {
   return await new simpleGit().getConfig("user.name");
 };
 const handleOptions = (author) => {
-  if (options.author) {
-    gitShellOptions["--author"] = `(${options.author.split(",").join("|")})`;
-  } else {
-    gitShellOptions["--author"] = `(${author})`;
+  const authors = (options.author ? options.author.split(",") : [author])
+    .filter(Boolean)
+    .map((item) => escapeRegExp(item.trim()))
+    .filter(Boolean);
+  if (authors.length === 0) {
+    console.log(
+      chalk.red.bold("未能获取git config中的user.name，请通过-a参数指定作者")
+    );
+    process.exit(1);
   }
+  gitShellOptions["--author"] = `(${authors.join("|")})`;
   if (options.since) {
-    gitShellOptions["--since"] = moment(options.since).hours(0).minute(0).second(0).format("YYYY-MM-DD HH:mm:ss");
+    gitShellOptions["--since"] = dayjs(options.since)
+      .hour(0)
+      .minute(0)
+      .second(0)
+      .format("YYYY-MM-DD HH:mm:ss");
   }
   if (options.until) {
-    gitShellOptions["--until"] = moment(options.until).hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss");
+    gitShellOptions["--until"] = dayjs(options.until)
+      .hour(23)
+      .minute(59)
+      .second(59)
+      .format("YYYY-MM-DD HH:mm:ss");
+  }
+};
+const stashedProjects = [];
+const switchBranch = async (git, projectPath) => {
+  const branchName = options.branch;
+  try {
+    const status = await git.status();
+    if (!status.isClean()) {
+      const stashMessage = `aitrk auto stash ${dayjs().format(
+        "YYYY-MM-DD HH:mm:ss"
+      )}`;
+      await git.stash(["push", "--include-untracked", "-m", stashMessage]);
+      stashedProjects.push(projectPath);
+      console.log(
+        chalk.magenta(
+          ` |-检测到本地未提交的变动，已自动stash：${stashMessage}，可执行git stash pop恢复`
+        )
+      );
+    }
+    try {
+      await git.fetch();
+    } catch (e) {
+      console.log(
+        chalk.yellow(
+          ` |-fetch失败：${e.message ? e.message : e}，使用本地已有的远端信息`
+        )
+      );
+    }
+    const branches = await git.branch(["-a"]);
+    const remoteRef = branches.all.find(
+      (branchItem) =>
+        branchItem.startsWith("remotes/") &&
+        branchItem.replace(/^remotes\/[^/]+\//, "") === branchName
+    );
+    const remoteBranch = remoteRef ? remoteRef.replace(/^remotes\//, "") : null;
+    const hasLocal = branches.all.includes(branchName);
+    if (remoteBranch) {
+      if (hasLocal) {
+        await git.checkout(branchName);
+        try {
+          await git.merge(["--ff-only", remoteBranch]);
+        } catch (e) {
+          console.log(
+            chalk.yellow(
+              ` |-本地分支${branchName}与${remoteBranch}有分叉，无法快进，按本地分支统计`
+            )
+          );
+        }
+      } else {
+        await git.checkoutBranch(branchName, remoteBranch);
+      }
+      console.log(
+        chalk.magenta(` |-已切换到分支${branchName}（远端${remoteBranch}）`)
+      );
+    } else if (hasLocal) {
+      await git.checkout(branchName);
+      console.log(
+        chalk.magenta(
+          ` |-远端不存在${branchName}分支，已切换到本地分支${branchName}`
+        )
+      );
+    } else {
+      console.log(
+        chalk.yellow(
+          ` |-本地和远端都不存在${branchName}分支，保持当前分支统计`
+        )
+      );
+    }
+  } catch (e) {
+    console.log(
+      chalk.yellow(
+        `[切换分支失败]${projectPath}：${
+          e.message ? e.message : e
+        }，保持当前分支统计`
+      )
+    );
   }
 };
 const handleEntries = async (entries, totalObj) => {
-  if (entries.length === 0) {
-    printResult(totalObj);
-    return;
-  }
-  const projectPath = path.resolve(entries.shift(), "../");
-  if (options.ignoreProject) {
-    const ignoreProjects = options.ignoreProject.split(",");
-    let ignore = ignoreProjects.some((ignoreProjectItem) =>
-      projectPath.includes(ignoreProjectItem)
-    );
-    if (ignore) {
-      console.log(chalk.bold.underline.cyan(`[忽略处理]${projectPath}项目`));
-      handleEntries(entries, totalObj);
-      return;
+  for (const entry of entries) {
+    const projectPath = path.resolve(entry, "../");
+    if (options.ignoreProject) {
+      const ignoreProjects = options.ignoreProject.split(",");
+      const ignore = ignoreProjects.some((ignoreProjectItem) =>
+        projectPath.includes(ignoreProjectItem)
+      );
+      if (ignore) {
+        console.log(chalk.bold.underline.cyan(`[忽略处理]${projectPath}项目`));
+        continue;
+      }
     }
-  }
-  console.log(chalk.bold.underline.blue(`[开始处理]${projectPath}项目`));
-  try {
-    const log = await simpleGit({
-      baseDir: projectPath,
-      binary: "git",
-    }).log(gitShellOptions);
-    console.log(chalk.bold.green(`共${log.all.length}次提交`));
-    if (log.all.length > 0) {
+    console.log(chalk.bold.underline.blue(`[开始处理]${projectPath}项目`));
+    try {
+      const git = simpleGit({
+        baseDir: projectPath,
+        binary: "git",
+      });
+      if (options.branch) {
+        await switchBranch(git, projectPath);
+      }
+      const log = await git.log(gitShellOptions);
+      console.log(chalk.bold.green(`共${log.all.length}次提交`));
       log.all.forEach((logItem, index) => {
         if (!logItem) return;
         const { diff } = logItem;
@@ -137,11 +243,11 @@ const handleEntries = async (entries, totalObj) => {
           chalk.green(
             ` |-第${index + 1}次提交，hash：${logItem.hash}，message：${
               logItem.message
-            }，提交时间：${moment(logItem.date).format("YYYY-MM-DD HH:mm:ss")}`
+            }，提交时间：${dayjs(logItem.date).format("YYYY-MM-DD HH:mm:ss")}`
           )
         );
         files.forEach((fileItem) => {
-          let ignore = ignoreFile.some((ignoreFileItem) =>
+          const ignore = ignoreFiles.some((ignoreFileItem) =>
             fileItem.file.includes(ignoreFileItem)
           );
           if (ignore) return;
@@ -163,26 +269,32 @@ const handleEntries = async (entries, totalObj) => {
         totalObj.deletions += deletions;
         totalObj.changes += changes;
       });
+    } catch (e) {
+      console.error(`[处理失败]${projectPath}`, e.message ? e.message : e);
     }
-  } catch (e) {
-    console.error(`[处理失败]${projectPath}`, e.message ? e.message : e);
   }
-  // console.log(log);
-  handleEntries(entries, totalObj);
+  printResult(totalObj);
 };
 const printResult = (totalObj) => {
+  if (stashedProjects.length > 0) {
+    console.log(
+      chalk.magenta.bold(
+        `以下${
+          stashedProjects.length
+        }个项目的本地变动已自动stash，可进入项目执行git stash pop恢复：\n${stashedProjects
+          .map((projectItem) => `  - ${projectItem}`)
+          .join("\n")}`
+      )
+    );
+  }
   console.log(
     chalk.black.bgYellow.bold(
       `统计结果：insertions: ${totalObj.insertions}, deletions: ${totalObj.deletions}, changes: ${totalObj.changes}`
     )
   );
-  let begin = moment(
-    options.since ? moment(options.since).hours(0).minute(0).second(0).format("YYYY-MM-DD HH:mm:ss") : moment().hours(0).minute(0).second(0).format("YYYY-MM-DD HH:mm:ss")
-  );
-  let end = moment(
-    options.until ? moment(options.until).hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss") : moment().hours(23).minute(59).second(59).format("YYYY-MM-DD HH:mm:ss")
-  );
-  let countDays =  Math.ceil(end.diff(begin, "days", true));
+  const begin = dayjs(options.since).hour(0).minute(0).second(0);
+  const end = dayjs(options.until).hour(23).minute(59).second(59);
+  const countDays = Math.ceil(end.diff(begin, "day", true));
   let perDayChange = totalObj.changes / countDays;
   console.log(
     chalk.black.bgYellow.bold(
@@ -195,19 +307,15 @@ const printResult = (totalObj) => {
   );
   if (perDayChange > 1000) {
     console.log(chalk.red.bold(`回家吧！卷王！`));
-    return;
-  }
-  if (perDayChange > 500) {
+  } else if (perDayChange > 500) {
     console.log(chalk.yellow.bold(`你离卷王越来越近了！`));
-    return;
-  }
-  if (perDayChange < 100) {
+  } else if (perDayChange < 100) {
     console.log(chalk.red.bold(`自己提交多少心里没数吗？赶紧卷起来！`));
-    return;
+  } else {
+    console.log(chalk.green.bold(`不卷不躺，节奏刚刚好！`));
   }
 };
 (async () => {
-  chalk.reset();
   const entries = getEntries();
   const totalObj = {
     insertions: 0,
